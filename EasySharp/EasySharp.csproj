@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net9.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <Folder Include="Core\CodeGen\" />
+      <Folder Include="Core\Parsers\" />
+      <Folder Include="Core\Preprocessing\" />
+      <Folder Include="Core\Semantics\" />
+      <Folder Include="Lib\AST\" />
+      <Folder Include="PublicAPI\" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="LLVMSharp" Version="18.1.0-rc1.8895972383" />
+      <PackageReference Include="LLVMSharp.Interop" Version="18.1.0-rc1.8895972383" />
+    </ItemGroup>
+
+</Project>
