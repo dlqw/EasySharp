@@ -8,19 +8,20 @@ internal sealed partial class Lexer(string source)
 
     private readonly List<Code> _codes = new();
     private readonly List<Token> _tokens = new();
-    private readonly string _source = source;
-    private int _index = 0;
+    private int _index;
     private bool ExistNextCode(int length = 1) => _index + length < _codes.Count;
     private Code CurrentCode => _codes[_index];
     private Code SecondCode => _codes[_index + 1];
+    private Code  ThirdCode => _codes[_index + 2];
     private char FirstChar => _codes[_index].Value[0];
+    private Code LastCode => _codes.Last();
     private Code GetCodeByIndex(int index) => _codes[index];
 
-    private int FirstMatchString(string value)
+    private int FirstMatchCode(CodeToken value)
     {
-        for (int i = _index + 1; _index < _codes.Count; _index++)
+        for (int i = _index + 1; i < _codes.Count; i++)
         {
-            if (_codes[i].Value == value)
+            if (_codes[i].CodeToken == value)
             {
                 return i;
             }
@@ -36,7 +37,7 @@ internal sealed partial class Lexer(string source)
     #region public
 
     public IReadOnlyList<Token> Tokens => _tokens;
-    
+
     public bool Tokenize()
     {
         Debug.Log("开始 Tokenize");
@@ -45,7 +46,8 @@ internal sealed partial class Lexer(string source)
         _codes.AddRange(new CodeSplitter(source).Split());
         Debug.Log("代码分割完成");
         // 代码分割完成后 取到的是 只有分隔符，数字，字母，下划线，运算符混合成的 Code 流
-        LexerStateMachine lsm = new LexerStateMachine(this);
+        LexerFA lsm = new LexerFA(this);
+        if (_codes.Count <= 0) return false;
         for (_index = 0; _index < _codes.Count; _index++)
         {
             foreach (var token in lsm.Tokenize())
@@ -58,8 +60,7 @@ internal sealed partial class Lexer(string source)
             }
         }
 
-        _tokens.Add(new Token(TokenType.EOF, _codes.Last().Line, _codes.Last().ColumnEnd, _codes.Last().ColumnEnd,
-            "EOF"));
+        _tokens.Add(LastCode.ToToken(TokenType.EOF));
 
         return true;
     }

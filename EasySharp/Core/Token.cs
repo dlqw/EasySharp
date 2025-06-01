@@ -1,6 +1,12 @@
 ﻿namespace EasySharp.Core;
 
-internal partial class Token(TokenType type, int line, int columnStart, int columnEnd, string lexeme, object? value = null)
+public partial class Token(
+    TokenType type,
+    int line,
+    int columnStart,
+    int columnEnd,
+    string lexeme,
+    object? value = null)
 {
     public TokenType Type { get; set; } = type;
     public int Line { get; set; } = line;
@@ -8,6 +14,17 @@ internal partial class Token(TokenType type, int line, int columnStart, int colu
     public int ColumnEnd { get; set; } = columnEnd;
     public string Lexeme { get; set; } = lexeme;
     public object? Value { get; set; } = value;
-    
-    public static bool IsSpecial(string lexeme) => true;
+
+    public override string ToString()
+    {
+        string typeStr = $"[{Type}]";
+        if (typeStr.Length > 8)
+        {
+            return $"{typeStr}\t {Lexeme} \t {Line}:({ColumnStart} - {ColumnEnd})";
+        }
+        else
+        {
+            return $"{typeStr}\t\t {Lexeme} \t {Line}:({ColumnStart} - {ColumnEnd})";
+        }
+    }
 }

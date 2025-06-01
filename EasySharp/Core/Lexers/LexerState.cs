@@ -6,27 +6,27 @@ namespace EasySharp.Core.Lexers;
 
 internal partial class Lexer
 {
-    private abstract class State(LexerStateMachine fsm)
+    private abstract class State(LexerFA fa)
     {
-        protected readonly LexerStateMachine Fsm = fsm;
+        protected readonly LexerFA Fa = fa;
 
         protected void PushToken(Token newToken)
         {
-            Fsm.PushToken(newToken);
+            Fa.PushToken(newToken);
         }
 
         public virtual bool Execute() => false;
     }
 
-    private sealed class IdleState(LexerStateMachine fsm) : State(fsm)
+    private sealed class IdleState(LexerFA fa) : State(fa)
     {
     }
 
     /// <summary>
     /// 对由字母，数字和下划线构成的字符串的预处理
     /// </summary>
-    /// <param name="fsm"></param>
-    private class NormalState(LexerStateMachine fsm) : State(fsm)
+    /// <param name="fa"></param>
+    private class LetterState(LexerFA fa) : State(fa)
     {
         public override bool Execute()
         {
@@ -34,70 +34,70 @@ internal partial class Lexer
         }
     }
 
-    private sealed class KeywordState(LexerStateMachine fsm) : State(fsm)
+    private sealed class KeywordState(LexerFA fa) : State(fa)
     {
         public override bool Execute()
         {
-            var code = Fsm.Lexer.CurrentCode;
-            var isSuccess = Token.Keywords.TryGetBySecond(code.Value, out var keyword);
+            var code = Fa.Lexer.CurrentCode;
+            var isSuccess = Token.Keywords.TryGetByFirst(code.Value, out var keyword);
             if (!isSuccess) return false;
             PushToken(code.ToToken(keyword));
             return true;
         }
     }
 
-    private sealed class IdentifierState(LexerStateMachine fsm) : State(fsm)
+    private sealed class IdentifierState(LexerFA fa) : State(fa)
     {
         public override bool Execute()
         {
-            PushToken(Fsm.Lexer.CurrentCode.ToToken(TokenType.Identifier));
+            PushToken(Fa.Lexer.CurrentCode.ToToken(TokenType.Identifier));
             return true;
         }
     }
 
-    private sealed class StringLiteralState(LexerStateMachine fsm) : State(fsm)
+    private sealed class StringLiteralState(LexerFA fa) : State(fa)
     {
         public override bool Execute()
         {
-            var nextID = Fsm.Lexer.FirstMatchString("\"");
+            var nextID = Fa.Lexer.FirstMatchCode(CodeToken.DoubleQuote);
             if (nextID == -1) return false;
-            var startCode = Fsm.Lexer.CurrentCode;
-            var endCode = Fsm.Lexer.GetCodeByIndex(nextID);
+            var startCode = Fa.Lexer.CurrentCode;
+            var endCode = Fa.Lexer.GetCodeByIndex(nextID);
             StringBuilder sb = new();
-            for (int i = Fsm.Lexer._index + 1; i < nextID - 1; i++)
+            for (int i = Fa.Lexer._index + 1; i < nextID; i++)
             {
-                sb.Append(Fsm.Lexer.GetCodeByIndex(i).Value);
+                sb.Append(Fa.Lexer.GetCodeByIndex(i).Value);
             }
 
             string value = sb.ToString();
 
             PushToken(new Token(TokenType.String, startCode.Line, startCode.ColumnStart, endCode.ColumnEnd,
                 $"\"{value}\"", value));
-            Fsm.Lexer.Advance(nextID - Fsm.Lexer._index);
+            Fa.Lexer.Advance(nextID - Fa.Lexer._index);
             return true;
         }
     }
 
-    private sealed class CharLiteralState(LexerStateMachine fsm) : State(fsm)
+    private sealed class CharLiteralState(LexerFA fa) : State(fa)
     {
         public override bool Execute()
         {
-            var nextID = Fsm.Lexer.FirstMatchString("'");
+            var nextID = Fa.Lexer.FirstMatchCode(CodeToken.SingleQuote);
             if (nextID == -1) return false;
-            if (Fsm.Lexer._index + 1 == nextID) return false;
-            var startCode = Fsm.Lexer.CurrentCode;
-            var endCode = Fsm.Lexer.GetCodeByIndex(nextID);
+            if (Fa.Lexer._index + 1 == nextID) return false;
+            var startCode = Fa.Lexer.CurrentCode;
+            var endCode = Fa.Lexer.GetCodeByIndex(nextID);
             StringBuilder sb = new();
-            for (int i = Fsm.Lexer._index + 1; i < nextID - 1; i++)
+            for (int i = Fa.Lexer._index + 1; i < nextID; i++)
             {
-                sb.Append(Fsm.Lexer.GetCodeByIndex(i).Value);
+                sb.Append(Fa.Lexer.GetCodeByIndex(i).Value);
             }
 
             string strValue = sb.ToString();
             if (!ProcessCharContent(strValue, out var charValue)) return false;
             PushToken(new Token(TokenType.Char, startCode.Line, startCode.ColumnStart, endCode.ColumnEnd,
                 $"'{strValue}'", charValue));
-            Fsm.Lexer.Advance(nextID - Fsm.Lexer._index);
+            Fa.Lexer.Advance(nextID - Fa.Lexer._index);
             return true;
         }
 
@@ -154,114 +154,65 @@ internal partial class Lexer
             return true;
         }
 
-        private char HandleUnicodeEscape(string sequence)
-        {
-            // \u + 4位十六进制
-            if (sequence.Length == 6 && sequence.StartsWith("\\u"))
-            {
-                string hexValue = sequence.Substring(2);
-                if (int.TryParse(hexValue, NumberStyles.HexNumber, null, out int charCode))
-                {
-                    return (char)charCode;
-                }
-            }
-            // \U + 8位十六进制 (用于表示超出BMP的Unicode字符)
-            else if (sequence.Length == 10 && sequence.StartsWith("\\U"))
-            {
-                string hexValue = sequence.Substring(2);
-                if (int.TryParse(hexValue, NumberStyles.HexNumber, null, out int charCode))
-                {
-                    // 注意：C#中char是UTF-16，所以这里可能需要特殊处理超出BMP的字符
-                    if (charCode <= 0xFFFF)
-                    {
-                        return (char)charCode;
-                    }
-                    else
-                    {
-                        // 处理超出BMP的字符，可能需要转换为代理对
-                        // 在实际编译器中，这里可能需要特殊处理或报错
-                        return '\0';
-                    }
-                }
-            }
-
-            return '\0'; // 处理错误情况
-        }
-
-        private char HandleOctalEscape(string sequence)
-        {
-            // 去掉前导反斜杠
-            string octalValue = sequence.Substring(1);
-
-            // 处理八进制值
-            try
-            {
-                int charCode = Convert.ToInt32(octalValue, 8);
-                if (charCode <= 255) // 确保在一个字节范围内
-                {
-                    return (char)charCode;
-                }
-            }
-            catch
-            {
-                // 转换错误
-            }
-
-            return '\0';
-        }
-
         #endregion
 
         #endregion
     }
 
-    private sealed class IntegerLiteralState(LexerStateMachine fsm) : State(fsm)
+    private sealed class IntegerLiteralState(LexerFA fa) : State(fa)
     {
         public override bool Execute()
         {
-            PushToken(Fsm.Lexer.CurrentCode.ToToken(TokenType.Int, int.Parse(Fsm.Lexer.CurrentCode.Value)));
+            PushToken(Fa.Lexer.CurrentCode.ToToken(TokenType.Int, int.Parse(Fa.Lexer.CurrentCode.Value)));
             return true;
         }
     }
 
-    private sealed class FloatLiteralState(LexerStateMachine fsm) : State(fsm)
+    private sealed class FloatLiteralState(LexerFA fa) : State(fa)
     {
         public override bool Execute()
         {
-            if (Fsm.Lexer.CurrentCode.Value == ".")
+            if (Fa.Lexer.CurrentCode.Value == ".")
             {
-                if (Fsm.Lexer.ExistNextCode() && Fsm.Lexer.SecondCode.Value.IsNumber())
+                if (Fa.Lexer.ExistNextCode() && Fa.Lexer.SecondCode.CodeToken == CodeToken.Digit)
                 {
-                    PushToken(Fsm.Lexer.CurrentCode.ToToken(TokenType.Float, float.Parse(
-                        "." + Fsm.Lexer.SecondCode.Value, CultureInfo.InvariantCulture
-                    )));
-                    Fsm.Lexer.Advance();
+                    if (float.TryParse("." + Fa.Lexer.SecondCode.Value, out var num))
+                    {
+                        PushToken(new Token(TokenType.Float, Fa.Lexer.CurrentCode.Line,
+                            Fa.Lexer.CurrentCode.ColumnStart,
+                            Fa.Lexer.SecondCode.ColumnEnd, num.ToString(CultureInfo.InvariantCulture), num));
+                        Fa.Lexer.Advance();
+                        return true;
+                    }
+
+                    return false;
+                }
+            }
+
+            if (Fa.Lexer.ExistNextCode(2) && Fa.Lexer.SecondCode.Value == "." &&
+                Fa.Lexer.ThirdCode.CodeToken == CodeToken.Digit)
+            {
+                if (float.TryParse(Fa.Lexer.CurrentCode.Value + "." + Fa.Lexer.ThirdCode.Value, out var num))
+                {
+                    PushToken(new Token(TokenType.Float, Fa.Lexer.CurrentCode.Line, Fa.Lexer.CurrentCode.ColumnStart,
+                        Fa.Lexer.ThirdCode.ColumnEnd, num.ToString(CultureInfo.InvariantCulture), num));
+                    Fa.Lexer.Advance(2);
                     return true;
                 }
             }
-            else if (Fsm.Lexer.CurrentCode.Value.IsNumber())
-            {
-                if (Fsm.Lexer.ExistNextCode(2) && Fsm.Lexer.SecondCode.Value.IsNumber())
-                {
-                    PushToken(Fsm.Lexer.CurrentCode.ToToken(TokenType.Float, float.Parse(
-                        Fsm.Lexer.CurrentCode.Value + "." + Fsm.Lexer.SecondCode.Value, CultureInfo.InvariantCulture
-                    )));
-                    Fsm.Lexer.Advance(2);
-                    return true;
-                }
-            }
+
 
             return false;
         }
     }
 
-    private sealed class OperatorState(LexerStateMachine fsm) : State(fsm)
+    private sealed class OperatorState(LexerFA fa) : State(fa)
     {
         public override bool Execute()
         {
-            var code = Fsm.Lexer.CurrentCode;
-            if (Fsm.Lexer.ExistNextCode(2) && code.Value == "." &&
-                Fsm.Lexer.SecondCode.Value.IsNumber()) return false;
+            var code = Fa.Lexer.CurrentCode;
+            if (Fa.Lexer.ExistNextCode(2) && code.Value == "." &&
+                Fa.Lexer.SecondCode.CodeToken == CodeToken.Digit) return false;
 
             ReadOnlySpan<char> span = code.Value.AsSpan();
             int left = 0;
@@ -274,7 +225,7 @@ internal partial class Lexer
                 {
                     int length = right - left + 1;
                     ReadOnlySpan<char> slice = span.Slice(left, length);
-                    if (Token.Operators.TryGetBySecond(slice.ToString(), out var type))
+                    if (Token.Operators.TryGetByFirst(slice.ToString(), out var type))
                     {
                         PushToken(code.ToToken(type));
                         left = right + 1;
@@ -296,44 +247,55 @@ internal partial class Lexer
         }
     }
 
+    private sealed class SeparatorState(LexerFA fa) : State(fa)
+    {
+        public override bool Execute()
+        {
+            var code = Fa.Lexer.CurrentCode;
+            if (!Token.Separators.TryGetByFirst(code.Value[0], out var separator)) return false;
+            PushToken(code.ToToken(separator));
+            return true;
+        }
+    }
+
     private class Transition(Func<bool> condition, State to)
     {
         public readonly State To = to;
         public bool Match() => condition();
     }
 
-    private class LexerStateMachine
+    private class LexerFA
     {
         private readonly Dictionary<State, List<Transition>> _transitions = new();
         private readonly Queue<Token> _tokenQueue = new();
         private readonly State _firstState;
         public readonly Lexer Lexer;
 
-        public LexerStateMachine(Lexer lexer)
+        public LexerFA(Lexer lexer)
         {
             var initialState = new IdleState(this);
             var keywordState = new KeywordState(this);
-            var normalState = new NormalState(this);
+            var letterState = new LetterState(this);
             var identifierState = new IdentifierState(this);
             var stringLiteralState = new StringLiteralState(this);
             var charLiteralState = new CharLiteralState(this);
             var integerLiteralState = new IntegerLiteralState(this);
             var floatLiteralState = new FloatLiteralState(this);
             var operatorState = new OperatorState(this);
+            var separatorState = new SeparatorState(this);
             _firstState = initialState;
             Lexer = lexer;
 
-            AddTransition(initialState, normalState, () => Lexer.CurrentCode.CodeToken == CodeToken.Normal);
+            AddTransition(initialState, letterState, () => Lexer.CurrentCode.CodeToken == CodeToken.Letter);
             AddTransition(initialState, operatorState, () => Lexer.CurrentCode.CodeToken == CodeToken.Operator);
-            AddTransition(initialState, stringLiteralState, () => lexer.CurrentCode.Value == "\"");
-            AddTransition(initialState, charLiteralState, () => lexer.CurrentCode.Value == "'");
+            AddTransition(initialState, floatLiteralState, () => Lexer.CurrentCode.CodeToken == CodeToken.Digit);
+            AddTransition(initialState, separatorState, () => Lexer.CurrentCode.CodeToken == CodeToken.Separator);
+            AddTransition(initialState, stringLiteralState, () => Lexer.CurrentCode.CodeToken == CodeToken.DoubleQuote);
+            AddTransition(initialState, charLiteralState, () => Lexer.CurrentCode.CodeToken == CodeToken.SingleQuote);
 
-            AddTransition(normalState, identifierState, () => lexer.FirstChar == '_');
-            AddTransition(normalState, keywordState, () => Token.Keywords.ContainsSecond(Lexer.CurrentCode.Value));
+            AddTransition(letterState, keywordState, () => true);
             AddTransition(keywordState, identifierState, () => true);
-            AddTransition(normalState, floatLiteralState, () => lexer.CurrentCode.Value.IsNumber());
             AddTransition(floatLiteralState, integerLiteralState, () => true);
-
             AddTransition(operatorState, floatLiteralState, () => true); // todo 暂时没有别的状态转移 所以先设为 true
         }
 
@@ -365,7 +327,10 @@ internal partial class Lexer
                 }
             }
 
-            if (_tokenQueue.Count == 0) _tokenQueue.Enqueue(Lexer.CurrentCode.ToToken(TokenType.Error));
+            if (Lexer.ExistNextCode())
+            {
+                if (_tokenQueue.Count == 0) _tokenQueue.Enqueue(Lexer.CurrentCode.ToToken(TokenType.Error));
+            }
 
             foreach (var token in _tokenQueue)
             {

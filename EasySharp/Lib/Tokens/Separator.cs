@@ -3,12 +3,17 @@
 // ReSharper disable once CheckNamespace
 namespace EasySharp.Core;
 
-internal partial class Token
+public partial class Token
 {
-    public static readonly HashSet<char> Separators =
-    [
-        ';',
-        '\"',
-        '\''
-    ];
+    public static readonly BiDictionary<char, TokenType> Separators = new()
+    {
+        {';', TokenType.Semicolon },
+        {'(', TokenType.LeftParen},
+        {')', TokenType.RightParen},
+        {'[', TokenType.LeftBracket},
+        {']', TokenType.RightBracket},
+        {'{', TokenType.LeftBrace},
+        {'}', TokenType.RightBrace},
+        {',' , TokenType.Comma}
+    };
 }
