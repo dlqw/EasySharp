@@ -2,31 +2,45 @@ using System.Text;
 
 namespace EasySharp.Core.Lexers;
 
-public class CodeSplitter(string source)
+public class CodeSplitter
 {
     #region private
 
     private int _line = 0;
     private int _columnStart = 0;
     private int _columnEnd = 0;
+    private int _index = 0;
     private CodeToken _codeToken = CodeToken.None;
+    private Ruler _ruler;
+    private NormalRuler _normalRuler;
+    private SingleLineCommentRuler _singleLineCommentRuler;
+    private MultiLineCommentRuler _multiLineCommentRuler;
+    private readonly string _source;
+    private readonly StringBuilder value = new();
 
-    private bool Match(int index, char first, char second)
+    private bool Match(char first)
     {
-        if (index < 0 || index >= source.Length - 1) return false;
-        return source[index] == first && source[index + 1] == second;
+        if (_index < 0 || _index >= _source.Length) return false;
+        return _source[_index] == first;
     }
 
-    void NextLine()
+    private bool Match(char first, char second)
     {
-        _line++;
-        _columnStart = 0;
-        _columnEnd = -1;
+        if (_index < 0 || _index >= _source.Length - 1) return false;
+        return _source[_index] == first && _source[_index + 1] == second;
     }
 
     #endregion
 
     #region public
+
+    public CodeSplitter(string source)
+    {
+        _source = source;
+        _normalRuler = new NormalRuler(this);
+        _singleLineCommentRuler = new SingleLineCommentRuler(this);
+        _multiLineCommentRuler = new MultiLineCommentRuler(this);
+    }
 
     public IEnumerable<Code> Split()
     {
@@ -34,28 +48,101 @@ public class CodeSplitter(string source)
         _columnStart = 0;
         _columnEnd = -1;
         _codeToken = CodeToken.None;
+        this.value.Clear();
+        NormalRuler normalRuler = new NormalRuler(this);
+        _ruler = normalRuler;
         StringBuilder value = new StringBuilder();
-        for (int index = 0; index < source.Length; index++)
+        for (_index = 0; _index < _source.Length; _index++)
         {
-            #region Get Char
+            #region Line Step
 
-            char c = source[index];
+            _columnEnd++;
 
             #endregion
+
+            #region Next Ruler
+
+            if (_ruler.NextState(out var ruler))
+            {
+                _ruler = ruler;
+            }
+
+            #endregion
+
+            #region Yield Return Code
+
+            if (_ruler.NextCode(_source[_index], out var code))
+            {
+                yield return code;
+            }
+
+            #endregion
+
+            if (value.Length > 0 && _index < _source.Length)
+            {
+                yield return new Code(_line, _columnStart, _columnEnd, value.ToString(), _codeToken);
+            }
+        }
+    }
+
+    #endregion
+
+    private abstract class Ruler(CodeSplitter splitter)
+    {
+        protected CodeSplitter Splitter = splitter;
+        protected StringBuilder Value => Splitter.value;
+
+        protected virtual void NextLine()
+        {
+            Splitter._line++;
+            Splitter._columnStart = 0;
+            Splitter._columnEnd = -1;
+        }
+
+        public virtual bool NextState(out Ruler ruler)
+        {
+            ruler = this;
+            return false;
+        }
+
+        public virtual bool NextCode(char c, out Code code)
+        {
+            code = Code.Empty;
+            return false;
+        }
+    }
+
+    private sealed class NormalRuler(CodeSplitter splitter) : Ruler(splitter)
+    {
+        public override bool NextState(out Ruler ruler)
+        {
+            ruler = this;
+            if (Splitter.Match('/', '/'))
+            {
+                ruler = Splitter._singleLineCommentRuler;
+                return true;
+            }
+
+            if (Splitter.Match('/', '*'))
+            {
+                ruler = Splitter._multiLineCommentRuler;
+                return true;
+            }
+
+            return false;
+        }
+
+        public override bool NextCode(char c, out Code code)
+        {
+            code = new Code();
 
             #region New Line
 
             if (c == '\n')
             {
                 NextLine();
-                continue;
+                return false;
             }
-
-            #endregion
-
-            #region Line Step
-
-            _columnEnd++;
 
             #endregion
 
@@ -63,170 +150,81 @@ public class CodeSplitter(string source)
 
             if (char.IsWhiteSpace(c))
             {
-                if (value.Length > 0)
+                if (Value.Length > 0)
                 {
-                    yield return new Code(_line, _columnStart, _columnEnd, value.ToString(), _codeToken);
-                    value.Clear();
-                    _codeToken = CodeToken.None;
-                    _columnStart = _columnEnd + 1;
-                }
-                else
-                {
-                    _columnStart++;   
+                    code = new Code(Splitter._line, Splitter._columnStart, Splitter._columnEnd, Value.ToString(),
+                        Splitter._codeToken);
+                    Value.Clear();
+                    Splitter._codeToken = CodeToken.None;
+                    Splitter._columnStart = Splitter._columnEnd + 1;
+                    return true;
                 }
 
-                continue;
+                Splitter._columnStart++;
+                return false;
             }
 
             #endregion
 
             #region Split Different Tokens
 
+            bool success = false;
             CodeToken newCodeToken = Code.GetToken(c);
-            if (!Code.Equals(_codeToken, newCodeToken))
+            if (!Code.Equals(Splitter._codeToken, newCodeToken))
             {
-                if (value.Length > 0)
+                if (Value.Length > 0)
                 {
-                    yield return new Code(_line, _columnStart, _columnEnd, value.ToString(), _codeToken);
-                    value.Clear();
-                    _columnStart = _columnEnd + 1;
+                    code = new Code(Splitter._line, Splitter._columnStart, Splitter._columnEnd, Value.ToString(),
+                        Splitter._codeToken);
+                    Value.Clear();
+                    Splitter._columnStart = Splitter._columnEnd + 1;
+                    success = true;
                 }
                 else
                 {
-                    _columnStart++;
+                    Splitter._columnStart++;
                 }
 
-                _codeToken = newCodeToken;
+                Splitter._codeToken = newCodeToken;
             }
 
             #endregion
 
-            value.Append(c);
-        }
-
-        if (value.Length > 0)
-        {
-            yield return new Code(_line, _columnStart, _columnEnd, value.ToString(), _codeToken);
+            Value.Append(c);
+            return success;
         }
     }
 
-    // public IEnumerable<Code> Split()
-    // {
-    //     int line = 1;
-    //     int columnStart = 1;
-    //     int columnEnd = 0;
-    //     StringBuilder value = new StringBuilder();
-    //     CodeCharType lastCodeToken = CodeCharType.None;
-    //     bool inComment = false;
-    //     bool ignoreNext = false;
-    //
-    //     void NextLine()
-    //     {
-    //         line++;
-    //         columnStart = 1;
-    //         columnEnd = 0;
-    //     }
-    //
-    //     for (var index = 0; index < source.Length; index++)
-    //     {
-    //         var c = source[index];
-    //         if (c == '\n')
-    //         {
-    //             NextLine();
-    //             ignoreNext = false;
-    //             continue;
-    //         }
-    //
-    //         if (ignoreNext)
-    //         {
-    //             ignoreNext = false;
-    //             columnStart++;
-    //             continue;
-    //         }
-    //
-    //         if (inComment)
-    //         {
-    //             inComment = !Match(index, '*', '/');
-    //             if (inComment)
-    //             {
-    //                 columnStart++;
-    //                 continue;
-    //             }
-    //
-    //             ignoreNext = true;
-    //             continue;
-    //         }
-    //
-    //         if (Match(index, '\\', '\\'))
-    //         {
-    //             NextLine();
-    //         }
-    //         else if (Match(index, '\\', '*'))
-    //         {
-    //             inComment = true;
-    //         }
-    //         else
-    //         {
-    //             if (char.IsWhiteSpace(c))
-    //             {
-    //                 string valueStr = value.ToString();
-    //                 if (!string.IsNullOrEmpty(valueStr))
-    //                 {
-    //                     yield return new Code(line, columnStart, columnEnd, valueStr, CodeToken.Normal);
-    //                     value.Clear();
-    //                     columnStart = columnEnd + 1;
-    //                 }
-    //
-    //                 // 跳过本字符
-    //                 columnStart++;
-    //             }
-    //             else if (Token.Separators.Contains(c))
-    //             {
-    //                 string valueStr = value.ToString();
-    //                 if (!string.IsNullOrEmpty(valueStr))
-    //                 {
-    //                     yield return new Code(line, columnStart, columnEnd, valueStr, CodeToken.Normal);
-    //                     value.Clear();
-    //                     columnStart = columnEnd + 1;
-    //                 }
-    //
-    //                 yield return new Code(line, columnStart, columnStart, c.ToString(), CodeToken.Separator);
-    //
-    //                 // 跳过本字符
-    //                 columnStart++;
-    //             }
-    //             else
-    //             {
-    //                 if (lastCodeToken != CodeCharType.None)
-    //                 {
-    //                     var currentCodeToken = GetCodeToken(c);
-    //                     if (currentCodeToken != lastCodeToken)
-    //                     {
-    //                         string valueStr = value.ToString();
-    //                         if (!string.IsNullOrEmpty(valueStr))
-    //                         {
-    //                             yield return new Code(line, columnStart, columnEnd, valueStr,
-    //                                 lastCodeToken == CodeCharType.Normal ? CodeToken.Normal : CodeToken.Operator);
-    //                             value.Clear();
-    //                             columnStart = columnEnd + 1;
-    //                         }
-    //                     }
-    //                 }
-    //
-    //                 value.Append(c);
-    //                 lastCodeToken = GetCodeToken(c);
-    //             }
-    //
-    //             columnEnd++;
-    //         }
-    //     }
-    //
-    //     string valueStr2 = value.ToString();
-    //     if (!string.IsNullOrEmpty(valueStr2))
-    //     {
-    //         yield return new Code(line, columnStart, columnEnd, valueStr2, CodeToken.Normal);
-    //     }
-    // }
+    private sealed class SingleLineCommentRuler(CodeSplitter splitter) : Ruler(splitter)
+    {
+        public override bool NextState(out Ruler ruler)
+        {
+            ruler = this;
+            if (Splitter.Match('\n'))
+            {
+                ruler = Splitter._normalRuler;
+                return true;
+            }
 
-    #endregion
+            return false;
+        }
+    }
+
+    private sealed class MultiLineCommentRuler(CodeSplitter splitter) : Ruler(splitter)
+    {
+        public override bool NextState(out Ruler ruler)
+        {
+            ruler = this;
+            if (Splitter.Match('*', '/'))
+            {
+                ruler = Splitter._normalRuler;
+                Splitter._index += 2;
+                Splitter._columnEnd += 2;
+                Splitter._columnStart = Splitter._columnEnd;
+                return true;
+            }
+
+            return false;
+        }
+    }
 }

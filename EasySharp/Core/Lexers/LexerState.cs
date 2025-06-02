@@ -59,7 +59,7 @@ internal partial class Lexer
     {
         public override bool Execute()
         {
-            var nextID = Fa.Lexer.FirstMatchCode(CodeToken.DoubleQuote);
+            var nextID = Fa.Lexer.FirstMatchCode(CodeToken.RawString);
             if (nextID == -1) return false;
             var startCode = Fa.Lexer.CurrentCode;
             var endCode = Fa.Lexer.GetCodeByIndex(nextID);
@@ -82,7 +82,7 @@ internal partial class Lexer
     {
         public override bool Execute()
         {
-            var nextID = Fa.Lexer.FirstMatchCode(CodeToken.SingleQuote);
+            var nextID = Fa.Lexer.FirstMatchCode(CodeToken.RawChar);
             if (nextID == -1) return false;
             if (Fa.Lexer._index + 1 == nextID) return false;
             var startCode = Fa.Lexer.CurrentCode;
@@ -290,8 +290,8 @@ internal partial class Lexer
             AddTransition(initialState, operatorState, () => Lexer.CurrentCode.CodeToken == CodeToken.Operator);
             AddTransition(initialState, floatLiteralState, () => Lexer.CurrentCode.CodeToken == CodeToken.Digit);
             AddTransition(initialState, separatorState, () => Lexer.CurrentCode.CodeToken == CodeToken.Separator);
-            AddTransition(initialState, stringLiteralState, () => Lexer.CurrentCode.CodeToken == CodeToken.DoubleQuote);
-            AddTransition(initialState, charLiteralState, () => Lexer.CurrentCode.CodeToken == CodeToken.SingleQuote);
+            AddTransition(initialState, stringLiteralState, () => Lexer.CurrentCode.CodeToken == CodeToken.RawString);
+            AddTransition(initialState, charLiteralState, () => Lexer.CurrentCode.CodeToken == CodeToken.RawChar);
 
             AddTransition(letterState, keywordState, () => true);
             AddTransition(keywordState, identifierState, () => true);

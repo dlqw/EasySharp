@@ -7,8 +7,8 @@ public enum CodeToken
     Digit,
     Operator,
     Separator,
-    DoubleQuote,
-    SingleQuote,
+    RawString,
+    RawChar,
 }
 
 public readonly struct Code(
@@ -23,6 +23,7 @@ public readonly struct Code(
     public readonly int ColumnEnd = columnEnd;
     public readonly string Value = value;
     public readonly CodeToken CodeToken = codeToken;
+    public static Code Empty => new(0, 0, 0, string.Empty);
 
     public static CodeToken GetToken(char c)
     {
@@ -30,8 +31,8 @@ public readonly struct Code(
         if (char.IsDigit(c)) return CodeToken.Digit;
         if (Token.OperatorsChars.Contains(c)) return CodeToken.Operator;
         if (Token.Separators.ContainsFirst(c)) return CodeToken.Separator;
-        if (c == '\"') return CodeToken.DoubleQuote;
-        if (c == '\'') return CodeToken.SingleQuote;
+        if (c == '\"') return CodeToken.RawString;
+        if (c == '\'') return CodeToken.RawChar;
         return CodeToken.None;
     }
 
