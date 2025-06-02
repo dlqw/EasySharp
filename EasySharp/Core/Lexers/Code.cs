@@ -9,6 +9,7 @@ public enum CodeToken
     Separator,
     RawString,
     RawChar,
+    Error
 }
 
 public readonly struct Code(

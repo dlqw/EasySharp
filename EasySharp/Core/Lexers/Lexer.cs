@@ -12,23 +12,8 @@ internal sealed partial class Lexer(string source)
     private bool ExistNextCode(int length = 1) => _index + length < _codes.Count;
     private Code CurrentCode => _codes[_index];
     private Code SecondCode => _codes[_index + 1];
-    private Code  ThirdCode => _codes[_index + 2];
-    private char FirstChar => _codes[_index].Value[0];
+    private Code ThirdCode => _codes[_index + 2];
     private Code LastCode => _codes.Last();
-    private Code GetCodeByIndex(int index) => _codes[index];
-
-    private int FirstMatchCode(CodeToken value)
-    {
-        for (int i = _index + 1; i < _codes.Count; i++)
-        {
-            if (_codes[i].CodeToken == value)
-            {
-                return i;
-            }
-        }
-
-        return -1;
-    }
 
     private void Advance(int index = 1) => _index += index;
 
@@ -60,7 +45,7 @@ internal sealed partial class Lexer(string source)
             }
         }
 
-        _tokens.Add(LastCode.ToToken(TokenType.EOF));
+        _tokens.Add(new Token(TokenType.EOF, LastCode.Line, LastCode.ColumnEnd, LastCode.ColumnEnd, string.Empty));
 
         return true;
     }

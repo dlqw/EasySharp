@@ -59,47 +59,59 @@ internal partial class Lexer
     {
         public override bool Execute()
         {
-            var nextID = Fa.Lexer.FirstMatchCode(CodeToken.RawString);
-            if (nextID == -1) return false;
-            var startCode = Fa.Lexer.CurrentCode;
-            var endCode = Fa.Lexer.GetCodeByIndex(nextID);
-            StringBuilder sb = new();
-            for (int i = Fa.Lexer._index + 1; i < nextID; i++)
-            {
-                sb.Append(Fa.Lexer.GetCodeByIndex(i).Value);
-            }
-
-            string value = sb.ToString();
-
-            PushToken(new Token(TokenType.String, startCode.Line, startCode.ColumnStart, endCode.ColumnEnd,
-                $"\"{value}\"", value));
-            Fa.Lexer.Advance(nextID - Fa.Lexer._index);
+            PushToken(Fa.Lexer.CurrentCode.ToToken(TokenType.String));
             return true;
         }
+
+        // public override bool Execute()
+        // {
+        //     var nextID = Fa.Lexer.FirstMatchCode(CodeToken.RawString);
+        //     if (nextID == -1) return false;
+        //     var startCode = Fa.Lexer.CurrentCode;
+        //     var endCode = Fa.Lexer.GetCodeByIndex(nextID);
+        //     StringBuilder sb = new();
+        //     for (int i = Fa.Lexer._index + 1; i < nextID; i++)
+        //     {
+        //         sb.Append(Fa.Lexer.GetCodeByIndex(i).Value);
+        //     }
+        //
+        //     string value = sb.ToString();
+        //
+        //     PushToken(new Token(TokenType.String, startCode.Line, startCode.ColumnStart, endCode.ColumnEnd,
+        //         $"\"{value}\"", value));
+        //     Fa.Lexer.Advance(nextID - Fa.Lexer._index);
+        //     return true;
+        // }
     }
 
     private sealed class CharLiteralState(LexerFA fa) : State(fa)
     {
         public override bool Execute()
         {
-            var nextID = Fa.Lexer.FirstMatchCode(CodeToken.RawChar);
-            if (nextID == -1) return false;
-            if (Fa.Lexer._index + 1 == nextID) return false;
-            var startCode = Fa.Lexer.CurrentCode;
-            var endCode = Fa.Lexer.GetCodeByIndex(nextID);
-            StringBuilder sb = new();
-            for (int i = Fa.Lexer._index + 1; i < nextID; i++)
-            {
-                sb.Append(Fa.Lexer.GetCodeByIndex(i).Value);
-            }
-
-            string strValue = sb.ToString();
-            if (!ProcessCharContent(strValue, out var charValue)) return false;
-            PushToken(new Token(TokenType.Char, startCode.Line, startCode.ColumnStart, endCode.ColumnEnd,
-                $"'{strValue}'", charValue));
-            Fa.Lexer.Advance(nextID - Fa.Lexer._index);
+            PushToken(Fa.Lexer.CurrentCode.ToToken(TokenType.Char));
             return true;
         }
+
+        // public override bool Execute()
+        // {
+        //     var nextID = Fa.Lexer.FirstMatchCode(CodeToken.RawChar);
+        //     if (nextID == -1) return false;
+        //     if (Fa.Lexer._index + 1 == nextID) return false;
+        //     var startCode = Fa.Lexer.CurrentCode;
+        //     var endCode = Fa.Lexer.GetCodeByIndex(nextID);
+        //     StringBuilder sb = new();
+        //     for (int i = Fa.Lexer._index + 1; i < nextID; i++)
+        //     {
+        //         sb.Append(Fa.Lexer.GetCodeByIndex(i).Value);
+        //     }
+        //
+        //     string strValue = sb.ToString();
+        //     if (!ProcessCharContent(strValue, out var charValue)) return false;
+        //     PushToken(new Token(TokenType.Char, startCode.Line, startCode.ColumnStart, endCode.ColumnEnd,
+        //         $"'{strValue}'", charValue));
+        //     Fa.Lexer.Advance(nextID - Fa.Lexer._index);
+        //     return true;
+        // }
 
         #region private
 
@@ -258,6 +270,15 @@ internal partial class Lexer
         }
     }
 
+    private sealed class ErrorState(LexerFA fa) : State(fa)
+    {
+        public override bool Execute()
+        {
+            PushToken(Fa.Lexer.CurrentCode.ToToken(TokenType.Error));
+            return true;
+        }
+    }
+
     private class Transition(Func<bool> condition, State to)
     {
         public readonly State To = to;
@@ -283,6 +304,7 @@ internal partial class Lexer
             var floatLiteralState = new FloatLiteralState(this);
             var operatorState = new OperatorState(this);
             var separatorState = new SeparatorState(this);
+            var errorState = new ErrorState(this);
             _firstState = initialState;
             Lexer = lexer;
 
@@ -292,6 +314,7 @@ internal partial class Lexer
             AddTransition(initialState, separatorState, () => Lexer.CurrentCode.CodeToken == CodeToken.Separator);
             AddTransition(initialState, stringLiteralState, () => Lexer.CurrentCode.CodeToken == CodeToken.RawString);
             AddTransition(initialState, charLiteralState, () => Lexer.CurrentCode.CodeToken == CodeToken.RawChar);
+            AddTransition(initialState, errorState, () => Lexer.CurrentCode.CodeToken == CodeToken.Error);
 
             AddTransition(letterState, keywordState, () => true);
             AddTransition(keywordState, identifierState, () => true);

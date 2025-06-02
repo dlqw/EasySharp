@@ -1,10 +1,11 @@
 1  + 1;
-var a = b++ + (++a -" dd dd ")
-char b12 = 'c';
+var a = b++ + (++a -" dd dd ") // adhidhadh djdhd dweh281
+char /* adak */b12 = 'c';
 c = 1
 c = 1.1
 c = 0.1
 c = .2
+char cc = 'n'
 1a
 a1.a(2);
 ;let a = b++; 

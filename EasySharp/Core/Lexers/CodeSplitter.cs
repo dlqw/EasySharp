@@ -6,17 +6,19 @@ public class CodeSplitter
 {
     #region private
 
-    private int _line = 0;
-    private int _columnStart = 0;
-    private int _columnEnd = 0;
-    private int _index = 0;
+    private int _line;
+    private int _columnStart;
+    private int _columnEnd;
+    private int _index;
     private CodeToken _codeToken = CodeToken.None;
     private Ruler _ruler;
-    private NormalRuler _normalRuler;
-    private SingleLineCommentRuler _singleLineCommentRuler;
-    private MultiLineCommentRuler _multiLineCommentRuler;
+    private readonly NormalRuler _normalRuler;
+    private readonly SingleLineCommentRuler _singleLineCommentRuler;
+    private readonly MultiLineCommentRuler _multiLineCommentRuler;
+    private RawCharRuler _rawCharRuler;
+    private RawStringRuler _rawStringRuler;
     private readonly string _source;
-    private readonly StringBuilder value = new();
+    private readonly StringBuilder _value = new();
 
     private bool Match(char first)
     {
@@ -40,6 +42,9 @@ public class CodeSplitter
         _normalRuler = new NormalRuler(this);
         _singleLineCommentRuler = new SingleLineCommentRuler(this);
         _multiLineCommentRuler = new MultiLineCommentRuler(this);
+        _rawCharRuler = new RawCharRuler(this);
+        _rawStringRuler = new RawStringRuler(this);
+        _ruler = _normalRuler;
     }
 
     public IEnumerable<Code> Split()
@@ -48,7 +53,7 @@ public class CodeSplitter
         _columnStart = 0;
         _columnEnd = -1;
         _codeToken = CodeToken.None;
-        this.value.Clear();
+        this._value.Clear();
         NormalRuler normalRuler = new NormalRuler(this);
         _ruler = normalRuler;
         StringBuilder value = new StringBuilder();
@@ -74,6 +79,7 @@ public class CodeSplitter
             if (_ruler.NextCode(_source[_index], out var code))
             {
                 yield return code;
+                if(code.CodeToken == CodeToken.Error) yield break;
             }
 
             #endregion
@@ -89,8 +95,8 @@ public class CodeSplitter
 
     private abstract class Ruler(CodeSplitter splitter)
     {
-        protected CodeSplitter Splitter = splitter;
-        protected StringBuilder Value => Splitter.value;
+        protected readonly CodeSplitter Splitter = splitter;
+        protected StringBuilder Value => Splitter._value;
 
         protected virtual void NextLine()
         {
@@ -126,6 +132,18 @@ public class CodeSplitter
             if (Splitter.Match('/', '*'))
             {
                 ruler = Splitter._multiLineCommentRuler;
+                return true;
+            }
+
+            if (Splitter.Match('"'))
+            {
+                ruler = Splitter._rawStringRuler;
+                return true;
+            }
+
+            if (Splitter.Match('\''))
+            {
+                ruler = Splitter._rawCharRuler;
                 return true;
             }
 
@@ -224,6 +242,67 @@ public class CodeSplitter
                 return true;
             }
 
+            return false;
+        }
+    }
+
+    private sealed class RawCharRuler(CodeSplitter splitter) : Ruler(splitter)
+    {
+        public override bool NextState(out Ruler ruler)
+        {
+            ruler = this;
+            if (Splitter.Match('\''))
+            {
+                ruler = Splitter._normalRuler;
+                return true;
+            }
+
+            return false;
+        }
+        
+        public override bool NextCode(char c, out Code code)
+        {
+            code = new Code();
+            if (c == '\'')
+            {
+                Splitter._codeToken = CodeToken.RawChar;
+                Splitter._columnStart = Splitter._columnEnd + 1;
+                Value.Clear();
+            }
+            
+            // todo 处理转义字符 支持 UTF-8 编码格式等
+
+            Value.Append(c);
+            if (Value.Length >= 3) Splitter._codeToken = CodeToken.Error;
+            return false;
+        }
+    }
+
+    private sealed class RawStringRuler(CodeSplitter splitter) : Ruler(splitter)
+    {
+        public override bool NextState(out Ruler ruler)
+        {
+            ruler = this;
+            if (Splitter.Match('"'))
+            {
+                ruler = Splitter._normalRuler;
+                return true;
+            }
+
+            return false;
+        }
+
+        public override bool NextCode(char c, out Code code)
+        {
+            code = new Code();
+            if (c == '"')
+            {
+                Splitter._codeToken = CodeToken.RawString;
+                Splitter._columnStart = Splitter._columnEnd + 1;
+                Value.Clear();
+            }
+
+            Value.Append(c);
             return false;
         }
     }
