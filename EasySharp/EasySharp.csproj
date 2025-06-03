@@ -8,10 +8,8 @@
 
     <ItemGroup>
       <Folder Include="Core\CodeGen\" />
-      <Folder Include="Core\Parsers\" />
       <Folder Include="Core\Preprocessing\" />
       <Folder Include="Core\Semantics\" />
-      <Folder Include="Lib\AST\" />
     </ItemGroup>
 
     <ItemGroup>
