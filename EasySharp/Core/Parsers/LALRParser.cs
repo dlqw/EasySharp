@@ -27,13 +27,13 @@ public class LALRParser
         BuildParsingTable();
         Console.WriteLine("语法分析表构建完成");
     }
-    
+
     private void BuildParsingTable()
     {
         var initialItem = new LRItem(_augmentedProduction, 0, SpecialSymbols.EndMarker);
         var initialItemSet = Closure(new ItemSet(initialItem));
 
-        _states = new List<ItemSet> { initialItemSet };
+        _states = [initialItemSet];
         initialItemSet.StateNumber = 0;
 
         var worklist = new Queue<ItemSet>();
@@ -55,7 +55,7 @@ public class LALRParser
             {
                 if (symbol == null) continue;
                 var gotoSet = Goto(currentState, symbol);
-                
+
                 bool found = false;
                 for (int i = 0; i < _states.Count; i++)
                 {
@@ -78,13 +78,13 @@ public class LALRParser
         }
 
         Console.WriteLine("构建GOTO表完成");
-        
+
         MergeSimilarStates();
 
         Console.WriteLine("合并状态完成");
-        
+
         BuildActionTable();
-        
+
         Console.WriteLine("Action表构建完成");
     }
 
@@ -143,11 +143,11 @@ public class LALRParser
 
         return Closure(new ItemSet(result));
     }
-    
+
     private void MergeSimilarStates()
     {
         var stateGroups = new Dictionary<string, List<ItemSet>>();
-        
+
         foreach (var state in _states)
         {
             var coreKey = string.Join("|",
@@ -158,7 +158,7 @@ public class LALRParser
 
             stateGroups[coreKey].Add(state);
         }
-        
+
         var newStates = new List<ItemSet>();
         var stateMap = new Dictionary<int, int>(); // 旧状态号 -> 新状态号
 
@@ -191,7 +191,7 @@ public class LALRParser
                 newStates.Add(mergedState);
             }
         }
-        
+
         var newGotoTable = new Dictionary<(int, Symbol), int>();
         foreach (var entry in _gotoTable)
         {
@@ -205,11 +205,11 @@ public class LALRParser
         _states = newStates;
         _gotoTable = newGotoTable;
     }
-    
+
     private void BuildActionTable()
     {
         _actionTable = new Dictionary<(int, Symbol), Action>();
-        
+
         foreach (var state in _states)
         {
             foreach (var terminal in _grammar.Terminals.Concat([SpecialSymbols.EndMarker]))
@@ -249,7 +249,7 @@ public class LALRParser
                 }
             }
         }
-        
+
         ResolveConflicts();
     }
 
@@ -317,17 +317,18 @@ public class LALRParser
             {
                 case ActionType.Shift:
                     stateStack.Push(action.Value);
-                    
+
                     if (currentSymbol.Type == SymbolType.Terminal)
                     {
-                        if (currentSymbol.Name == "Id")
-                        {
-                            nodeStack.Push(new IdentifierNode(currentValue));
-                        }
-                        else
-                        {
+                        // if (currentSymbol.Name == "Id")
+                        // {
+                        //     nodeStack.Push(new IdentifierNode(currentValue));
+                        // }
+                        // else
+                        // {
                             nodeStack.Push(new TerminalNode(currentSymbol.Name, currentValue));
-                        }
+                        // }
+
                         Console.WriteLine($"移入：{currentSymbol.Name} -> {currentValue}");
                     }
 
@@ -358,12 +359,12 @@ public class LALRParser
                             return null;
                         }
                     }
-                    
+
                     var newNode = production.SemanticAction(childNodes);
                     nodeStack.Push(newNode);
-                    
+
                     var gotoState = stateStack.Peek();
-                    
+
                     if (!_gotoTable.TryGetValue((gotoState, production.Left), out int nextState))
                     {
                         Console.WriteLine($"语法错误：无法找到GOTO({gotoState}, {production.Left})");
@@ -387,7 +388,7 @@ public class LALRParser
 
         return null;
     }
-    
+
     public void PrintParsingTable()
     {
         Console.WriteLine("ACTION表：");

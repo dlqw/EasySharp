@@ -48,6 +48,7 @@ public enum TokenType
     Yield,
     Virtual,
     Abstract,
+    Namespace,
     
 
     #endregion
@@ -241,6 +242,7 @@ public enum TokenType
     String,
     Char,
     Bool,
+    This,
     Error,
     EOF,
 }

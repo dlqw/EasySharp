@@ -2,7 +2,7 @@
 
 namespace EasySharp.Lib.AST;
 
-public class IdentifierNode(string name) : ASTNode
+public class IdNode(string name) : ASTNode
 {
     public override string NodeType => "Id";
     public string Name { get; } = name;
