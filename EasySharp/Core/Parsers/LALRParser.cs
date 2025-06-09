@@ -326,7 +326,7 @@ public class LALRParser
                         // }
                         // else
                         // {
-                            nodeStack.Push(new TerminalNode(currentSymbol.Name, currentValue));
+                            nodeStack.Push(new Terminal(currentSymbol.Name, currentValue));
                         // }
 
                         Console.WriteLine($"移入：{currentSymbol.Name} -> {currentValue}");

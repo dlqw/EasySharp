@@ -26,13 +26,23 @@ public class SymbolInstance(string mame, SymbolType type) : Symbol(mame, type)
 {
     public bool IsMaybe;
     public bool IsList;
+    public Symbol? RepeatSymbol;
     public static SymbolInstance M(Symbol symbol) => new(symbol.Name, symbol.Type, true, false);
     public static SymbolInstance L(Symbol symbol) => new(symbol.Name, symbol.Type, false, true);
+    public static SymbolInstance L(Symbol symbol, Symbol repeat) 
+        => new(symbol.Name, symbol.Type, false, true, repeat);
     public static SymbolInstance ML(Symbol symbol) => new(symbol.Name, symbol.Type, true, true);
 
     public SymbolInstance(string name, SymbolType type, bool isMaybe, bool isList) : this(name, type)
     {
         IsMaybe = isMaybe;
         IsList = isList;
+    }
+    
+    public SymbolInstance(string name, SymbolType type, bool isMaybe, bool isList, Symbol repeat) : this(name, type)
+    {
+        IsMaybe = isMaybe;
+        IsList = isList;
+        RepeatSymbol = repeat;       
     }
 }

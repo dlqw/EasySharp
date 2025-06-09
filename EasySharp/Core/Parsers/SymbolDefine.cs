@@ -1,4 +1,5 @@
-﻿using EasySharp.Lib.AST;
+﻿using System.Xml.Schema;
+using EasySharp.Lib.AST;
 using EasySharp.Utility;
 using S = EasySharp.Core.Parsers.SymbolInstance;
 
@@ -47,6 +48,7 @@ public partial class Symbol
     public static readonly Symbol Arg = new("Arg", SymbolType.NonTerminal);
     public static readonly Symbol Param = new("Param", SymbolType.NonTerminal);
     public static readonly Symbol Id = new("Id", SymbolType.NonTerminal);
+    public static readonly Symbol Annotation = new("Annotation", SymbolType.NonTerminal);
     public static readonly Symbol Literal = new("Literal", SymbolType.NonTerminal);
     public static readonly Symbol NamespaceName = new Symbol("NamespaceName", SymbolType.NonTerminal);
 
@@ -190,13 +192,25 @@ public partial class Symbol
     public static readonly List<Production> Productions =
     [
         new(FileScope, [S.L(UseStmt), FileScopedNamespaceDeclaration],
-            nodes => new FileScope(nodes[1], nodes[0])),
+            nodes => new FileScope(nodes.Span<UseStmt>(0, 1), nodes[^1])),
         new(FileScope, [S.L(UseStmt), S.L(NamespaceDeclaration)],
-            nodes => new FileScope(nodes[1], nodes[0])),
+            nodes => {
+                List<UseStmt> useStmts = new List<UseStmt>();
+                List<NamespaceDeclaration> namespaceDeclarations = new List<NamespaceDeclaration>();
+                foreach (var node in nodes)
+                {
+                    if (node is UseStmt useStmt) useStmts.Add(useStmt);
+                    else if (node is NamespaceDeclaration namespaceDeclaration)
+                        namespaceDeclarations.Add(namespaceDeclaration);
+                    else throw new Exception("Invalid node type");
+                }
+
+                return new FileScope(useStmts, namespaceDeclarations);
+            }),
         new(FileScope, [FileScopedNamespaceDeclaration],
             nodes => new FileScope(nodes[0])),
         new(FileScope, [S.L(NamespaceDeclaration)],
-            nodes => new FileScope(nodes[0])),
+            nodes => new FileScope(nodes.Span<NamespaceDeclaration>())),
 
         new(UseStmt, [Use, NamespaceName, Semicolon],
             nodes => new UseStmt(nodes[1])),
@@ -211,10 +225,24 @@ public partial class Symbol
         new(StructScope, [S.L(StructMember)],
             nodes => new StructScope(nodes.Span<StructMember>())),
         new(StructDeclaration, [S.L(Modifier), Struct, Id, LeftBrace, StructScope, RightBrace],
-            nodes => new StructDeclaration(nodes.Span<Modifier>(0, 5), nodes[2], nodes[4])),
+            nodes => new StructDeclaration(nodes.Span<Modifier>(0, 5), nodes[^4], nodes[^2])),
 
-        new(StructMember, [FuncDeclaration], nodes => new StructMember(Lib.AST.StructMember.MemberType.Function)),
-        new(StructMember, [VarDeclaration], nodes => new StructMember(Lib.AST.StructMember.MemberType.Variable)),
+        new(StructMember, [FuncDeclaration],
+            nodes => new StructMember(Lib.AST.StructMember.MemberType.Function, nodes[0])),
+        new(StructMember, [VarDeclaration],
+            nodes => new StructMember(Lib.AST.StructMember.MemberType.Variable, nodes[0])),
+
+        new(VarDeclaration, [S.L(Modifier), Let, Id, Assign, Expr, Semicolon],
+            nodes => new VarDeclaration(nodes.Span<Modifier>(0, 5), nodes[^4], nodes[^2])),
+        new(VarDeclaration, [S.L(Modifier), Let, Annotation, Assign, Expr, Semicolon],
+            nodes => new VarDeclaration(nodes.Span<Modifier>(0, 5), nodes[^4], nodes[^2])),
+        
+        new(Annotation, [Id, Colon, Id],
+            nodes => new Annotation(nodes[0], nodes[2])),
+        new(Param, [S.L(Annotation, Comma)],
+            nodes => new Param(nodes.Span<Annotation>())),
+        new(Arg, [S.L(Expr, Comma)],
+            nodes => new Param(nodes.Span<Annotation>())),
     ];
 
     #endregion

@@ -40,14 +40,14 @@ public partial class Parser
         var result = new List<Production>();
         var hasListSymbol = false;
         var listSymbols = new List<(int index, Symbol originalSymbol)>();
+        var repeatSymbols = new List<(int index, Symbol originalSymbol, Symbol repeatSymbol)>();
 
         for (int i = 0; i < production.Right.Count; i++)
         {
-            if (production.Right[i] is SymbolInstance symbolInstance && symbolInstance.IsList)
-            {
-                hasListSymbol = true;
-                listSymbols.Add((i, symbolInstance));
-            }
+            if (production.Right[i] is not SymbolInstance { IsList: true } symbolInstance) continue;
+            hasListSymbol = true;
+            if (symbolInstance.RepeatSymbol == null) listSymbols.Add((i, symbolInstance));
+            else repeatSymbols.Add((i, symbolInstance, symbolInstance.RepeatSymbol));
         }
 
         if (!hasListSymbol)
@@ -55,8 +55,7 @@ public partial class Parser
             result.Add(new Production(production.Left, production.Right, productionId++, production.SemanticAction));
             return result;
         }
-
-        // 为每个列表符号创建对应的列表非终结符
+        
         foreach (var (index, symbolInstance) in listSymbols)
         {
             var listNonTerminal = new Symbol($"{symbolInstance.Name}List", SymbolType.NonTerminal);
@@ -95,6 +94,11 @@ public partial class Parser
                 CreateSemanticActionForList(production.SemanticAction, index)
             );
             result.Add(newProduction);
+        }
+
+        foreach (var (index, symbolInstance, repeatSymbol) in repeatSymbols)
+        {
+            // todo 实现 repeat 语法
         }
 
         return result;

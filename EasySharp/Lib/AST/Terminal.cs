@@ -2,7 +2,7 @@
 
 namespace EasySharp.Lib.AST;
 
-public class TerminalNode(string symbolName, string value) : ASTNode
+public class Terminal(string symbolName, string value) : ASTNode
 {
     public override string NodeType => $"Terminal:{SymbolName}";
     public string SymbolName { get; } = symbolName;

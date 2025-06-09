@@ -2,11 +2,37 @@
 
 namespace EasySharp.Lib.AST;
 
-public class FileScope(ASTNode namespaceScope, ASTNode? useStmt = null) : ASTNode
+public class FileScope : ASTNode
 {
-    public ASTNode? UseStmt { get; set; } = useStmt;
-    public ASTNode NamespaceScope { get; set; } = namespaceScope;
+    public List<UseStmt>? UseStmtList { get; set; }
+    public List<NamespaceDeclaration>? NamespaceDeclarationList { get; set; }
+    public ASTNode? FileScopedFileScopedNamespaceDeclaration { get; set; }
+    public bool IsFileScoped { get; } = false;
     public override string NodeType => "FileScope";
+
+    public FileScope(List<UseStmt> useStmtList, List<NamespaceDeclaration> namespaceDeclarationList)
+    {
+        UseStmtList = useStmtList;
+        NamespaceDeclarationList = namespaceDeclarationList;
+    }
+
+    public FileScope(List<UseStmt> useStmtList, ASTNode fileScopedFileScopedNamespaceDeclaration)
+    {
+        UseStmtList = useStmtList;
+        FileScopedFileScopedNamespaceDeclaration = fileScopedFileScopedNamespaceDeclaration;
+        IsFileScoped = true;
+    }
+
+    public FileScope(List<NamespaceDeclaration> namespaceDeclarationList)
+    {
+        NamespaceDeclarationList = namespaceDeclarationList;
+    }
+
+    public FileScope(ASTNode fileScopedFileScopedNamespaceDeclaration)
+    {
+        FileScopedFileScopedNamespaceDeclaration = fileScopedFileScopedNamespaceDeclaration;
+        IsFileScoped = true;
+    }
 }
 
 public class NamespaceDeclaration(ASTNode namespaceStmt, List<StructDeclaration> structList) : ASTNode
@@ -59,10 +85,11 @@ public class SyntaxError(string msg) : ASTNode
     }
 }
 
-public class StructMember(StructMember.MemberType member) : ASTNode
+public class StructMember(StructMember.MemberType member, ASTNode o) : ASTNode
 {
     public enum MemberType { Variable, Function, }
     public MemberType Member { get; set; } = member;
+    public ASTNode Object { get; set; } = o;
     public override string NodeType => "StructMember"; 
 }
 
@@ -82,4 +109,30 @@ public class StructDeclaration(List<Modifier> modifierList, ASTNode id, ASTNode 
     public ASTNode Id = id;
     public ASTNode StructScope { get; set; } = structScope; 
     public override string NodeType => "StructDeclaration";
+}
+
+public class VarDeclaration(List<Modifier> modifierList, ASTNode id, ASTNode expression) : ASTNode
+{
+    public List<Modifier> ModifierList { get; set; } = modifierList;
+    public ASTNode Id = id;
+    public ASTNode Expression { get; set; } = expression;
+    public override string NodeType => "VarDeclaration";
+}
+
+public class Id(ASTNode name) : ASTNode
+{
+    public ASTNode Name { get; set; } = name;
+    public override string NodeType => "Id";
+}
+
+public class Annotation(ASTNode name, ASTNode type) : Id(name)
+{
+    public ASTNode Type { get; set; } = type;
+    public override string NodeType => "Annotation";
+}
+
+public class Param(List<Annotation> annotationList) : ASTNode
+{
+    public List<Annotation> AnnotationList { get; set; } = annotationList;
+    public override string NodeType => "Param";
 }
