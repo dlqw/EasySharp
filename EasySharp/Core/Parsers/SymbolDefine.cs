@@ -53,7 +53,7 @@ public partial class Symbol
     public static readonly Symbol Param = new("Param", SymbolTypeEnum.NonTerminal);
 
     public static readonly Symbol Annotation = new("Annotation", SymbolTypeEnum.NonTerminal);
-    public static readonly Symbol QualifiedName = new("NamespaceName", SymbolTypeEnum.NonTerminal);
+    public static readonly Symbol QualifiedName = new("QualifiedName", SymbolTypeEnum.NonTerminal);
     public static readonly Symbol StructMember = new("StructMember", SymbolTypeEnum.NonTerminal);
 
     public static readonly Symbol Stmt = new("Stmt", SymbolTypeEnum.NonTerminal);
@@ -347,7 +347,7 @@ public partial class Symbol
         new(NamespaceDeclaration, [Namespace, QualifiedName, LeftBrace, S.L(StructDeclaration), RightBrace],
             nodes => new NamespaceDeclaration(nodes[1], nodes.Span<StructDeclaration>(3, 1))),
         new(QualifiedName, [S.L(Id, Dot)],
-            nodes => new NamespaceName(nodes.Span<Id>())),
+            nodes => new QualifiedName(nodes.Span<Id>())),
         new(StructScope, [S.L(StructMember)],
             nodes => new StructScope(nodes.Span<StructMember>())),
         new(StructDeclaration, [S.L(Modifier), Struct, Id, LeftBrace, StructScope, RightBrace],
@@ -363,9 +363,7 @@ public partial class Symbol
         #endregion
 
         #region VarDeclaration
-
-        new(VarDeclaration, [S.L(Modifier), Let, QualifiedName, Assign, Expr, Semicolon],
-            nodes => new VarDeclaration(nodes.Span<Modifier>(0, 5), nodes[^4], nodes[^2])),
+        
         new(VarDeclaration, [S.L(Modifier), Let, Annotation, Assign, Expr, Semicolon],
             nodes => new VarDeclaration(nodes.Span<Modifier>(0, 5), nodes[^4], nodes[^2])),
 

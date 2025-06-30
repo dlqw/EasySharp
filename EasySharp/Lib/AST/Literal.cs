@@ -17,7 +17,7 @@ public class Literal(Literal.LiteralType type) : ASTNode
     public override string NodeType => "Literal";
     public LiteralType Type { get; } = type;
 
-    public override string ToTreeString(int indent = 0)
+    public override string Print(int indent = 0)
     {
         return $"{new string(' ', indent)}{NodeType}:{Type}\n";
     }

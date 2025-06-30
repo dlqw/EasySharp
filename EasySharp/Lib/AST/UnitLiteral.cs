@@ -1,4 +1,6 @@
-namespace EasySharp.Core.Parsers;
+using EasySharp.Core.Parsers;
+
+namespace EasySharp.Lib.AST;
 
 public class UnitLiteral : ASTNode
 {

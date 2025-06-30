@@ -1,3 +1,5 @@
+using EasySharp.Lib.AST;
+
 namespace EasySharp.Core.Parsers;
 
 public class FuncScope : ASTNode

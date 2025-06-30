@@ -14,12 +14,12 @@ public class LambdaExpr(ASTNode param, ASTNode body) : ASTNode
         ReturnType = returnType;
     }
 
-    public override string ToTreeString(int indent = 0)
+    public override string Print(int indent = 0)
     {
         string hasReturnType = ReturnType != null ? "\n" : "";
         return $"{new string(' ', indent)}{NodeType}\n" +
-               $"{Param.ToTreeString(indent + 2)}\n" +
-               $"{ReturnType?.ToTreeString(indent + 2)} [Return]{hasReturnType}" +
-               $"{Body.ToTreeString(indent + 2)}";
+               $"{Param.Print(indent + 2)}\n" +
+               $"{ReturnType?.Print(indent + 2)} [Return]{hasReturnType}" +
+               $"{Body.Print(indent + 2)}";
     }
 }

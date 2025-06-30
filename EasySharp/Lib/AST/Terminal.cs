@@ -8,8 +8,8 @@ public class Terminal(string symbolName, string value) : ASTNode
     public string SymbolName { get; } = symbolName;
     public string Value { get; } = value;
 
-    public override string ToTreeString(int indent = 0)
+    public override string Print(int indent = 0)
     {
-        return $"{new string(' ', indent)}{NodeType}:{Value}";
+        return $"{new string(' ', indent)}{NodeType}:{Value}\n";
     }
 }

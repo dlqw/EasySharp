@@ -206,7 +206,7 @@ public partial class Parser
         }
 
         Console.WriteLine("AST:");
-        Console.WriteLine(ast.ToTreeString());
+        Console.WriteLine(ast.Print());
         return ast;
     }
 }

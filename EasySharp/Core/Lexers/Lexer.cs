@@ -30,7 +30,6 @@ internal sealed partial class Lexer(string source)
         _codes.Clear();
         _codes.AddRange(new CodeSplitter(source).Split());
         Debug.Log("代码分割完成");
-        // 代码分割完成后 取到的是 只有分隔符，数字，字母，下划线，运算符混合成的 Code 流
         LexerFA lsm = new LexerFA(this);
         if (_codes.Count <= 0) return false;
         for (_index = 0; _index < _codes.Count; _index++)

@@ -310,7 +310,7 @@ public class LALRParser
             var currentState = stateStack.Peek();
             var currentSymbol = index < tokens.Count ? tokens[index].Symbol : SpecialSymbols.EndMarker;
             var currentValue = index < tokens.Count ? tokens[index].Value : "";
-            Console.WriteLine($"当前状态: {currentState}, 当前符号: {currentSymbol.Name}");
+            Console.WriteLine($"当前状态: {currentState}, 当前符号: {currentSymbol.Name} 当前值: {currentValue}");
             if (!_actionTable.TryGetValue((currentState, currentSymbol), out var action))
             {
                 Console.WriteLine($"语法错误：[NotFind] 状态 {currentState}，符号 {currentSymbol}");
@@ -324,8 +324,34 @@ public class LALRParser
 
                     if (currentSymbol.SymbolType == SymbolTypeEnum.Terminal)
                     {
-                        nodeStack.Push(new Terminal(currentSymbol.Name, currentValue));
+                        ASTNode target;
+                        if (Equals(currentSymbol, Symbol.Id))
+                        {
+                            Console.WriteLine($"id: {currentValue}");
+                            target = new Id(currentValue);
+                        }
+                        else if (Equals(currentSymbol, Symbol.FloatLiteral))
+                        {
+                            target = new FloatLiteral(float.Parse(currentValue));
+                        }
+                        else if (Equals(currentSymbol, Symbol.BoolLiteral))
+                        {
+                            target = new BoolLiteral(bool.Parse(currentValue));
+                        }
+                        else if (Equals(currentSymbol, Symbol.StringLiteral))
+                        {
+                            target = new IntLiteral(int.Parse(currentValue));
+                        }
+                        else if (Equals(currentSymbol, Symbol.IntLiteral))
+                        {
+                            target = new IntLiteral(int.Parse(currentValue));
+                        }
+                        else
+                        {
+                            target = new Terminal(currentSymbol.Name, currentValue);
+                        }
 
+                        nodeStack.Push(target);
                         Console.WriteLine($"移入：{currentSymbol.Name} -> {currentValue}");
                     }
 
