@@ -1,4 +1,5 @@
 ﻿using EasySharp.Core.Lexers;
+using EasySharp.Core.Parsers;
 using EasySharp.PublicAPI;
 
 string src = File.ReadAllText("D:\\rdququ\\RiderProjects\\EasySharp\\EasySharp.Demo\\src");
@@ -11,8 +12,11 @@ foreach (var code in splitter.Split())
 
 Console.WriteLine($"\nLexer State:");
 Lexer lexer = new Lexer();
-var result = lexer.Tokenize(src);
-foreach (var token in result)
+var tokens = lexer.Tokenize(src);
+foreach (var token in tokens)
 {
     Console.WriteLine(token);
 }
+
+Parser parser = new Parser();
+parser.Parse(tokens.ToList());

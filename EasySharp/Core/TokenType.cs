@@ -237,11 +237,12 @@ public enum TokenType
     #endregion
 
     Identifier,
-    Int,
-    Float,
-    String,
-    Char,
-    Bool,
+    IntLiteral,
+    FloatLiteral,
+    StringLiteral,
+    CharLiteral,
+    BoolLiteral,
+    UnitLiteral,
     This,
     Error,
     EOF,

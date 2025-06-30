@@ -59,7 +59,7 @@ internal partial class Lexer
     {
         public override bool Execute()
         {
-            PushToken(Fa.Lexer.CurrentCode.ToToken(TokenType.String));
+            PushToken(Fa.Lexer.CurrentCode.ToToken(TokenType.StringLiteral));
             return true;
         }
 
@@ -88,7 +88,7 @@ internal partial class Lexer
     {
         public override bool Execute()
         {
-            PushToken(Fa.Lexer.CurrentCode.ToToken(TokenType.Char));
+            PushToken(Fa.Lexer.CurrentCode.ToToken(TokenType.CharLiteral));
             return true;
         }
 
@@ -175,7 +175,7 @@ internal partial class Lexer
     {
         public override bool Execute()
         {
-            PushToken(Fa.Lexer.CurrentCode.ToToken(TokenType.Int, int.Parse(Fa.Lexer.CurrentCode.Value)));
+            PushToken(Fa.Lexer.CurrentCode.ToToken(TokenType.IntLiteral, int.Parse(Fa.Lexer.CurrentCode.Value)));
             return true;
         }
     }
@@ -190,7 +190,7 @@ internal partial class Lexer
                 {
                     if (float.TryParse("." + Fa.Lexer.SecondCode.Value, out var num))
                     {
-                        PushToken(new Token(TokenType.Float, Fa.Lexer.CurrentCode.Line,
+                        PushToken(new Token(TokenType.FloatLiteral, Fa.Lexer.CurrentCode.Line,
                             Fa.Lexer.CurrentCode.ColumnStart,
                             Fa.Lexer.SecondCode.ColumnEnd, num.ToString(CultureInfo.InvariantCulture), num));
                         Fa.Lexer.Advance();
@@ -206,7 +206,7 @@ internal partial class Lexer
             {
                 if (float.TryParse(Fa.Lexer.CurrentCode.Value + "." + Fa.Lexer.ThirdCode.Value, out var num))
                 {
-                    PushToken(new Token(TokenType.Float, Fa.Lexer.CurrentCode.Line, Fa.Lexer.CurrentCode.ColumnStart,
+                    PushToken(new Token(TokenType.FloatLiteral, Fa.Lexer.CurrentCode.Line, Fa.Lexer.CurrentCode.ColumnStart,
                         Fa.Lexer.ThirdCode.ColumnEnd, num.ToString(CultureInfo.InvariantCulture), num));
                     Fa.Lexer.Advance(2);
                     return true;

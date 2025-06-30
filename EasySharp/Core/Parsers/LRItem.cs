@@ -45,7 +45,7 @@ public class LRItem(Production production, int dotPosition, Symbol lookahead)
     public override string ToString()
     {
         var parts = Production.Right.ToList();
-        parts.Insert(DotPosition, new Symbol("•", SymbolType.Terminal));
+        parts.Insert(DotPosition, new Symbol("•", SymbolTypeEnum.Terminal));
         return $"{Production.Left} -> {string.Join(" ", parts)}, {Lookahead}";
     }
 }

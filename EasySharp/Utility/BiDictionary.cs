@@ -67,10 +67,10 @@ public class BiDictionary<TFirst, TSecond> : IEnumerable<KeyValuePair<TFirst, TS
     public void Add(TFirst first, TSecond second)
     {
         if (_firstToSecond.ContainsKey(first))
-            throw new ArgumentException($"键已存在: {first}");
+            throw new ArgumentException($"键已存在于First: {first}");
         
         if (_secondToFirst.ContainsKey(second))
-            throw new ArgumentException($"值已存在: {second}");
+            throw new ArgumentException($"值已存在于Second: {second}");
         
         _firstToSecond.Add(first, second);
         _secondToFirst.Add(second, first);

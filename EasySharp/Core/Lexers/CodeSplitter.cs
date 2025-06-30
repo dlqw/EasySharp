@@ -56,7 +56,6 @@ public class CodeSplitter
         this._value.Clear();
         NormalRuler normalRuler = new NormalRuler(this);
         _ruler = normalRuler;
-        StringBuilder value = new StringBuilder();
         for (_index = 0; _index < _source.Length; _index++)
         {
             #region Line Step
@@ -79,15 +78,15 @@ public class CodeSplitter
             if (_ruler.NextCode(_source[_index], out var code))
             {
                 yield return code;
-                if(code.CodeToken == CodeToken.Error) yield break;
+                if (code.CodeToken == CodeToken.Error) yield break;
             }
 
             #endregion
+        }
 
-            if (value.Length > 0 && _index < _source.Length)
-            {
-                yield return new Code(_line, _columnStart, _columnEnd, value.ToString(), _codeToken);
-            }
+        if (_value.Length > 0)
+        {
+            yield return new Code(_line, _columnStart, _columnStart + _value.Length - 1, _value.ToString(), _codeToken);
         }
     }
 
@@ -259,7 +258,7 @@ public class CodeSplitter
 
             return false;
         }
-        
+
         public override bool NextCode(char c, out Code code)
         {
             code = new Code();
@@ -269,7 +268,7 @@ public class CodeSplitter
                 Splitter._columnStart = Splitter._columnEnd + 1;
                 Value.Clear();
             }
-            
+
             // todo 处理转义字符 支持 UTF-8 编码格式等
 
             Value.Append(c);

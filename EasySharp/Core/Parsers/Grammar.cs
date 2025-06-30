@@ -162,7 +162,7 @@ public class Grammar
                     var symbol = right[i];
 
                     // 只对非终结符计算FOLLOW集
-                    if (symbol.Type != SymbolType.NonTerminal)
+                    if (symbol.SymbolType != SymbolTypeEnum.NonTerminal)
                         continue;
 
                     // 计算symbol后面的部分的FIRST集

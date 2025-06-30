@@ -2,18 +2,31 @@
 
 namespace EasySharp.Lib.AST;
 
-public abstract class AstListNode(ASTNode left, ASTNode? next = null) : ASTNode
+public class AstListNode : ASTNode
 {
-    public ASTNode Left { get; } = left;
-    public ASTNode? Next { get; } = next;
+    public ASTNode Left { get; }
+    public ASTNode? Next { get; }
 
-    public abstract override string NodeType { get; }
+    public AstListNode(string name, ASTNode left)
+    {
+        NodeType = name;
+        Left = left;
+    }
+
+    public AstListNode(string name, ASTNode left, ASTNode next)
+    {
+        NodeType = name;
+        Left = left;
+        Next = next;
+    }
+
+    public override string NodeType { get; } = "";
 
     public override string ToTreeString(int indent = 0)
     {
         if (Next == null)
         {
-            return $"{new string(' ', indent)}{NodeType}\n" +
+            return $"{new string(' ', indent)}{NodeType}List\n" +
                    $"{Left.ToTreeString(indent + 2)}";
         }
 

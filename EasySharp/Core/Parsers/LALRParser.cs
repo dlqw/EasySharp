@@ -98,7 +98,7 @@ public class LALRParser
         {
             var item = worklist.Dequeue();
 
-            if (!item.IsShiftItem || item.NextSymbol?.Type != SymbolType.NonTerminal)
+            if (!item.IsShiftItem || item.NextSymbol?.SymbolType != SymbolTypeEnum.NonTerminal)
                 continue;
 
             var nonTerminal = item.NextSymbol;
@@ -215,6 +215,7 @@ public class LALRParser
             foreach (var terminal in _grammar.Terminals.Concat([SpecialSymbols.EndMarker]))
             {
                 _actionTable[(state.StateNumber, terminal)] = new Action(ActionType.Error);
+                // Console.WriteLine($"ACTION[{state.StateNumber}, {terminal}] = Error");
             }
         }
 
@@ -227,10 +228,11 @@ public class LALRParser
                 if (item.IsShiftItem)
                 {
                     var nextSymbol = item.NextSymbol;
-                    if (nextSymbol?.Type == SymbolType.Terminal &&
+                    if (nextSymbol?.SymbolType == SymbolTypeEnum.Terminal &&
                         _gotoTable.TryGetValue((stateIndex, nextSymbol), out int nextState))
                     {
                         _actionTable[(stateIndex, nextSymbol)] = new Action(ActionType.Shift, nextState);
+                        //  Console.WriteLine($"ACTION[{stateIndex}, {nextSymbol}] = Shift({nextState})");
                     }
                 }
                 else // item.IsReduceItem
@@ -239,12 +241,14 @@ public class LALRParser
                     if (item.Production.ProductionNumber == 0 && item.Lookahead.Equals(SpecialSymbols.EndMarker))
                     {
                         _actionTable[(stateIndex, SpecialSymbols.EndMarker)] = new Action(ActionType.Accept);
+                        //Console.WriteLine($"ACTION[{stateIndex}, EndMarker] = Accept");
                     }
                     else
                     {
                         // 归约操作
                         _actionTable[(stateIndex, item.Lookahead)] =
                             new Action(ActionType.Reduce, item.Production.ProductionNumber);
+                        // Console.WriteLine($"ACTION[{stateIndex}, {item.Lookahead}] = Reduce({item.Production.ProductionNumber})");
                     }
                 }
             }
@@ -263,7 +267,7 @@ public class LALRParser
                 .Where(entry => entry.Key.Item1 == state.StateNumber)
                 .ToList();
 
-            foreach (var terminal in _grammar.Terminals.Concat(new[] { SpecialSymbols.EndMarker }))
+            foreach (var terminal in _grammar.Terminals.Concat([SpecialSymbols.EndMarker]))
             {
                 var conflictingActions = stateActions
                     .Where(entry => entry.Key.Item2.Equals(terminal) && entry.Value.Type != ActionType.Error)
@@ -318,16 +322,9 @@ public class LALRParser
                 case ActionType.Shift:
                     stateStack.Push(action.Value);
 
-                    if (currentSymbol.Type == SymbolType.Terminal)
+                    if (currentSymbol.SymbolType == SymbolTypeEnum.Terminal)
                     {
-                        // if (currentSymbol.Name == "Id")
-                        // {
-                        //     nodeStack.Push(new IdentifierNode(currentValue));
-                        // }
-                        // else
-                        // {
-                            nodeStack.Push(new Terminal(currentSymbol.Name, currentValue));
-                        // }
+                        nodeStack.Push(new Terminal(currentSymbol.Name, currentValue));
 
                         Console.WriteLine($"移入：{currentSymbol.Name} -> {currentValue}");
                     }
@@ -395,7 +392,7 @@ public class LALRParser
         foreach (var state in _states)
         {
             Console.WriteLine($"状态 {state.StateNumber}:");
-            foreach (var terminal in _grammar.Terminals.Concat(new[] { SpecialSymbols.EndMarker }))
+            foreach (var terminal in _grammar.Terminals.Concat([SpecialSymbols.EndMarker]))
             {
                 if (_actionTable.TryGetValue((state.StateNumber, terminal), out var action) &&
                     action.Type != ActionType.Error)

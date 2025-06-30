@@ -17,7 +17,15 @@ public partial class Parser
             _terminals.Add(symbol);
         }
 
-        foreach (var symbol in Symbol.NTS.SecondKeys)
+        foreach (var symbol in ParserHelper.GetSymbols())
+        {
+            if (symbol.SymbolType == SymbolTypeEnum.NonTerminal)
+            {
+                Symbol.NTS.Add(symbol);
+            }
+        }
+
+        foreach (var symbol in Symbol.NTS)
         {
             _nonTerminals.Add(symbol);
         }
@@ -55,17 +63,20 @@ public partial class Parser
             result.Add(new Production(production.Left, production.Right, productionId++, production.SemanticAction));
             return result;
         }
-        
+
+        Console.WriteLine($"ExpandList for {production.Left} {listSymbols.Count} {repeatSymbols.Count}");
+
         foreach (var (index, symbolInstance) in listSymbols)
         {
-            var listNonTerminal = new Symbol($"{symbolInstance.Name}List", SymbolType.NonTerminal);
+            var symbol = new Symbol(symbolInstance.Name, symbolInstance.SymbolType);
+            var listNonTerminal = new Symbol($"{symbolInstance.Name}List", SymbolTypeEnum.NonTerminal);
 
-            if (!_nonTerminals.Add(listNonTerminal))
+            if (_nonTerminals.Add(listNonTerminal))
             {
                 // ListSymbol -> Symbol
                 var singleProduction = new Production(
                     listNonTerminal,
-                    [new Symbol(symbolInstance.Name, symbolInstance.Type)],
+                    [symbol],
                     productionId++,
                     nodes => CreateListNode(nodes, symbolInstance.Name, single: true)
                 );
@@ -74,7 +85,7 @@ public partial class Parser
                 // ListSymbol -> Symbol ListSymbol
                 var multipleProduction = new Production(
                     listNonTerminal,
-                    [new Symbol(symbolInstance.Name, symbolInstance.Type), listNonTerminal],
+                    [symbol, listNonTerminal],
                     productionId++,
                     nodes => CreateListNode(nodes, symbolInstance.Name, single: false)
                 );
@@ -99,6 +110,42 @@ public partial class Parser
         foreach (var (index, symbolInstance, repeatSymbol) in repeatSymbols)
         {
             // todo 实现 repeat 语法
+            var symbol = new Symbol(symbolInstance.Name, symbolInstance.SymbolType);
+            var listNonTerminal = new Symbol($"{symbolInstance.Name}{repeatSymbol.Name}List", SymbolTypeEnum.NonTerminal);
+
+            if (_nonTerminals.Add(listNonTerminal))
+            {
+                // ListSymbol -> Symbol
+                var singleProduction = new Production(
+                    listNonTerminal,
+                    [symbol],
+                    productionId++,
+                    nodes => CreateListNode(nodes, symbolInstance.Name, single: true)
+                );
+                result.Add(singleProduction);
+
+                // ListSymbol -> Symbol RepeatSymbol ListSymbol
+                var multipleProduction = new Production(
+                    listNonTerminal,
+                    [symbol, repeatSymbol, listNonTerminal],
+                    productionId++,
+                    nodes => CreateListNode(nodes, symbolInstance.Name, single: false, middle: true)
+                );
+                result.Add(multipleProduction);
+            }
+
+            var newRight = new List<Symbol>(production.Right)
+            {
+                [index] = listNonTerminal
+            };
+
+            var newProduction = new Production(
+                production.Left,
+                newRight,
+                productionId++,
+                CreateSemanticActionForList(production.SemanticAction, index)
+            );
+            result.Add(newProduction);
         }
 
         return result;
@@ -128,16 +175,11 @@ public partial class Parser
         };
     }
 
-    private ASTNode CreateListNode(ASTNode[] nodes, string symbolName, bool single)
+    private ASTNode CreateListNode(ASTNode[] nodes, string symbolName, bool single, bool middle = false)
     {
-        if (!TypeCache.TryGetType($"EasySharp.Lib.AST.{symbolName}List", out var type))
-        {
-            throw new Exception($"Cannot find type {symbolName}List");
-        }
-
         var result = single
-            ? Activator.CreateInstance(type, BindingFlags.CreateInstance, nodes[0])
-            : Activator.CreateInstance(type, BindingFlags.CreateInstance, nodes[0], nodes[1]);
+            ? Activator.CreateInstance(typeof(AstListNode), symbolName, nodes[0])
+            : Activator.CreateInstance(typeof(AstListNode), symbolName, nodes[0], nodes[middle ? 2 : 1]);
         if (result is ASTNode node)
         {
             return node;
@@ -148,7 +190,7 @@ public partial class Parser
 
     #endregion
 
-    public void Parse(List<Token> tokens)
+    public ASTNode? Parse(List<Token> tokens)
     {
         var parser = new LALRParser(_grammar);
         List<(Symbol Symbol, string)> input = tokens
@@ -160,10 +202,11 @@ public partial class Parser
         if (ast == null)
         {
             Console.WriteLine("Error: Invalid syntax.");
-            return;
+            return null;
         }
 
         Console.WriteLine("AST:");
         Console.WriteLine(ast.ToTreeString());
+        return ast;
     }
 }
